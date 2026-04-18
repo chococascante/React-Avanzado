@@ -1,5 +1,5 @@
-import { Layout } from "./shared/components/Layout";
-import Tabs from "./shared/components/Tabs";
+import { Layout } from "../../ejemplo-next/src/components/layouts/Layout";
+import Tabs from "../../ejemplo-next/src/components/molecules/Tabs";
 import { TaskListContainer } from "./features/tasks";
 
 function App() {
