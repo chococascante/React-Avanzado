@@ -1,10 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useMemo } from 'react';
-import type { Task, TaskPriority, TaskStatus } from '@/features/tasks/data/mockData';
+import { useState, useCallback, useMemo } from "react";
+import type {
+  Task,
+  TaskPriority,
+  TaskStatus,
+} from "@/features/tasks/data/mockData";
+import { useDebounce } from "./useDebounce";
 
-export type TaskFilter = 'all' | 'completed' | 'pending' | TaskStatus;
-export type TaskSortBy = 'dateCreated' | 'priority' | 'name';
+export type TaskFilter = "all" | "completed" | "pending" | TaskStatus;
+export type TaskSortBy = "dateCreated" | "priority" | "name";
 
 /**
  * useTasks — custom hook implementado con useState (sin useReducer).
@@ -16,23 +21,41 @@ export type TaskSortBy = 'dateCreated' | 'priority' | 'name';
  */
 export function useTasks(initialTasks: Task[] = []) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  const [filter, setFilter] = useState<TaskFilter>('all');
-  const [sortBy, setSortBy] = useState<TaskSortBy>('dateCreated');
+  const [filter, setFilter] = useState<TaskFilter>("all");
+  const [sortBy, setSortBy] = useState<TaskSortBy>("dateCreated");
+  const [search, setSearch] = useState("");
+  const [search2, setSearch2] = useState("");
+  const debouncedSetSearch = useDebounce(setSearch2);
+
+  const handleChange = useCallback(
+    (s: string) => {
+      setSearch(() => {
+        debouncedSetSearch(s);
+
+        return s;
+      });
+    },
+    [debouncedSetSearch],
+  );
 
   const addTask = useCallback(
-    (taskData: Omit<Task, 'id' | 'createdAt' | 'completed'> & { priority?: TaskPriority }) => {
+    (
+      taskData: Omit<Task, "id" | "createdAt" | "completed"> & {
+        priority?: TaskPriority;
+      },
+    ) => {
       const { priority, ...rest } = taskData;
       const newTask: Task = {
         ...rest,
         id: String(Date.now()),
         completed: false,
         createdAt: new Date().toISOString(),
-        priority: priority ?? 'medium',
+        priority: priority ?? "medium",
       } as Task;
       setTasks((prev) => [newTask, ...prev]);
       return newTask;
     },
-    []
+    [],
   );
 
   const deleteTask = useCallback((id: string) => {
@@ -47,14 +70,16 @@ export function useTasks(initialTasks: Task[] = []) {
         return {
           ...t,
           completed,
-          status: completed ? 'done' : t.status === 'done' ? 'todo' : t.status,
+          status: completed ? "done" : t.status === "done" ? "todo" : t.status,
         };
-      })
+      }),
     );
   }, []);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+    );
   }, []);
 
   const reorderTasks = useCallback((fromIndex: number, toIndex: number) => {
@@ -69,28 +94,40 @@ export function useTasks(initialTasks: Task[] = []) {
   // Estado derivado: filtrado + ordenado (memoizado)
   const filteredAndSortedTasks = useMemo(() => {
     let result = tasks.filter((t) => {
-      if (filter === 'all') return true;
-      if (filter === 'completed') return Boolean(t.completed);
-      if (filter === 'pending') return !t.completed;
+      if (
+        search2 !== "" &&
+        !t.title.toLowerCase().includes(search2.toLowerCase())
+      ) {
+        return false;
+      }
+      if (filter === "all") return true;
+      if (filter === "completed") return Boolean(t.completed);
+      if (filter === "pending") return !t.completed;
       return t.status === filter;
     });
 
     result = [...result].sort((a, b) => {
-      if (sortBy === 'dateCreated') {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortBy === "dateCreated") {
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
       }
-      if (sortBy === 'priority') {
-        const order: Record<TaskPriority, number> = { high: 0, medium: 1, low: 2 };
+      if (sortBy === "priority") {
+        const order: Record<TaskPriority, number> = {
+          high: 0,
+          medium: 1,
+          low: 2,
+        };
         return order[a.priority] - order[b.priority];
       }
-      if (sortBy === 'name') {
+      if (sortBy === "name") {
         return a.title.localeCompare(b.title);
       }
       return 0;
     });
 
     return result;
-  }, [tasks, filter, sortBy]);
+  }, [tasks, search2, filter, sortBy]);
 
   // Estado derivado: estadísticas
   const stats = useMemo(
@@ -99,12 +136,12 @@ export function useTasks(initialTasks: Task[] = []) {
       completed: tasks.filter((t) => t.completed).length,
       pending: tasks.filter((t) => !t.completed).length,
       byPriority: {
-        high: tasks.filter((t) => t.priority === 'high').length,
-        medium: tasks.filter((t) => t.priority === 'medium').length,
-        low: tasks.filter((t) => t.priority === 'low').length,
+        high: tasks.filter((t) => t.priority === "high").length,
+        medium: tasks.filter((t) => t.priority === "medium").length,
+        low: tasks.filter((t) => t.priority === "low").length,
       },
     }),
-    [tasks]
+    [tasks],
   );
 
   return {
@@ -122,5 +159,7 @@ export function useTasks(initialTasks: Task[] = []) {
     reorderTasks,
     setFilter,
     setSortBy,
+    search,
+    setSearch: handleChange,
   };
 }

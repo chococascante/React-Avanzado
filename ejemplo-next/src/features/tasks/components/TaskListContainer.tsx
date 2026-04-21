@@ -1,25 +1,27 @@
-'use client';
+"use client";
 
-import { useCallback } from 'react';
-import { useAsync } from '@/hooks/useAsync';
-import { useTasks } from '@/hooks/useTasks';
-import { useNotifications } from '@/contexts/NotificationContext';
-import { taskService } from '@/services/taskService';
-import { TaskCard } from './TaskCard';
-import { TaskFilters } from './TaskFilters';
-import { TaskForm } from './TaskForm';
-import { LoadingSkeleton } from './LoadingSkeleton';
-import { ErrorMessage } from './ErrorMessage';
-import type { Task } from '../data/mockData';
+import { useCallback } from "react";
+import { useAsync } from "@/hooks/useAsync";
+import { useTasks } from "@/hooks/useTasks";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { taskService } from "@/services/taskService";
+import { TaskCard } from "./TaskCard";
+import { TaskFilters } from "./TaskFilters";
+import { TaskForm } from "./TaskForm";
+import { LoadingSkeleton } from "./LoadingSkeleton";
+import { ErrorMessage } from "./ErrorMessage";
+import type { Task } from "../data/mockData";
 
 interface TaskListContainerProps {
   initialTasks?: Task[];
 }
 
-export function TaskListContainer({ initialTasks = [] }: TaskListContainerProps) {
+export function TaskListContainer({
+  initialTasks = [],
+}: TaskListContainerProps) {
   const fetcher = useCallback(
     (signal: AbortSignal) => taskService.fetchTasks(signal),
-    []
+    [],
   );
 
   const { data, isLoading, error, refetch } = useAsync<Task[]>(fetcher);
@@ -35,6 +37,8 @@ export function TaskListContainer({ initialTasks = [] }: TaskListContainerProps)
     toggleTask,
     deleteTask,
     setFilter,
+    search,
+    setSearch,
   } = useTasks(data ?? initialTasks);
 
   if (isLoading && !data) {
@@ -44,10 +48,10 @@ export function TaskListContainer({ initialTasks = [] }: TaskListContainerProps)
   if (error) {
     return (
       <ErrorMessage
-        message={error.message || 'Error al cargar tareas'}
+        message={error.message || "Error al cargar tareas"}
         onRetry={() => {
           refetch();
-          addNotification('Reintentando...', 'info');
+          addNotification("Reintentando...", "info");
         }}
       />
     );
@@ -59,17 +63,23 @@ export function TaskListContainer({ initialTasks = [] }: TaskListContainerProps)
         onSubmit={(data) => {
           addTask({
             ...data,
-            status: 'todo',
-          } as Omit<Task, 'id' | 'createdAt' | 'completed'>);
-          addNotification('Tarea creada', 'success');
+            status: "todo",
+          } as Omit<Task, "id" | "createdAt" | "completed">);
+          addNotification("Tarea creada", "success");
         }}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-gray-500">
-          {stats.completed}/{stats.total} completadas · {stats.pending} pendientes
+          {stats.completed}/{stats.total} completadas · {stats.pending}{" "}
+          pendientes
         </p>
-        <TaskFilters activeFilter={filter} onFilterChange={setFilter} />
+        <TaskFilters
+          activeFilter={filter}
+          onFilterChange={setFilter}
+          search={search}
+          setSearch={setSearch}
+        />
       </div>
 
       {filteredAndSortedTasks.length === 0 ? (
@@ -85,7 +95,7 @@ export function TaskListContainer({ initialTasks = [] }: TaskListContainerProps)
                 type="button"
                 onClick={() => {
                   deleteTask(task.id);
-                  addNotification('Tarea eliminada', 'info');
+                  addNotification("Tarea eliminada", "info");
                 }}
                 className="self-end text-xs text-gray-400 hover:text-red-500"
               >
